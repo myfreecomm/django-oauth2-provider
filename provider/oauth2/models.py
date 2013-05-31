@@ -31,12 +31,12 @@ class Client(Document):
     Clients are outlined in the :draft:`2` and its subsections.
     """
     user = ReferenceField(AUTH_USER_MODEL, required=False)
-    name = CharField(max_length=255, required=False)
+    name = StringField(max_length=255, required=False)
     url = URLField(help_text="Your application's URL.")
     redirect_uri = URLField(help_text="Your application's callback URL")
-    client_id = CharField(max_length=255, default=utils.short_token)
-    client_secret = CharField(max_length=255, default=utils.long_token)
-    client_type = IntegerField(choices=CLIENT_TYPES)
+    client_id = StringField(max_length=255, default=utils.short_token)
+    client_secret = StringField(max_length=255, default=utils.long_token)
+    client_type = IntField()
 
     def __unicode__(self):
         return self.redirect_uri
@@ -60,10 +60,10 @@ class Grant(Document):
     """
     user = ReferenceField(AUTH_USER_MODEL)
     client = ReferenceField(Client)
-    code = CharField(max_length=255, default=utils.long_token)
+    code = StringField(max_length=255, default=utils.long_token)
     expires = DateTimeField(default=utils.get_code_expiry)
-    redirect_uri = CharField(max_length=255, required=False)
-    scope = IntegerField(default=0)
+    redirect_uri = StringField(max_length=255, required=False)
+    scope = IntField(default=0)
 
     def __unicode__(self):
         return self.code
@@ -90,10 +90,10 @@ class AccessToken(Document):
         expiry
     """
     user = ReferenceField(AUTH_USER_MODEL)
-    token = CharField(max_length=255, default=utils.long_token)
+    token = StringField(max_length=255, default=utils.long_token)
     client = ReferenceField(Client)
     expires = DateTimeField(default=utils.get_token_expiry)
-    scope = IntegerField(default=SCOPES[0][0],
+    scope = IntField(default=SCOPES[0][0],
             choices=SCOPES)
 
     def __unicode__(self):
@@ -126,7 +126,7 @@ class RefreshToken(Document):
     * :attr:`expired` - ``boolean``
     """
     user = ReferenceField(AUTH_USER_MODEL)
-    token = CharField(max_length=255, default=utils.long_token)
+    token = StringField(max_length=255, default=utils.long_token)
     access_token = ReferenceField(AccessToken)
     client = ReferenceField(Client)
     expired = BooleanField(default=False)
