@@ -2,7 +2,7 @@ import hashlib
 from uuid import uuid4
 from datetime import datetime
 
-from django.conf.settings import SECRET_KEY
+from django.conf import settings
 
 from .constants import EXPIRE_DELTA, EXPIRE_CODE_DELTA
 
@@ -12,7 +12,7 @@ def short_token():
     Generate a hash that can be used as an application identifier
     """
     hash = hashlib.sha1(str(uuid4()))
-    hash.update(SECRET_KEY)
+    hash.update(settings.SECRET_KEY)
     return hash.hexdigest()[::2]
 
 
@@ -21,7 +21,7 @@ def long_token():
     Generate a hash that can be used as an application secret
     """
     hash = hashlib.sha1(str(uuid4()))
-    hash.update(SECRET_KEY)
+    hash.update(settings.SECRET_KEY)
     return hash.hexdigest()
 
 
