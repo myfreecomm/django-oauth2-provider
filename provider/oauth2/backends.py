@@ -1,4 +1,3 @@
-from datetime import datetime
 from .forms import ClientAuthForm
 from .models import AccessToken
 
@@ -68,7 +67,6 @@ class AccessTokenBackend(object):
 
     def authenticate(self, access_token=None, client=None):
         try:
-            return AccessToken.objects.get(token=access_token,
-                expires__gt=datetime.now(), client=client)
+            return AccessToken.get_token(access_token, client=client)
         except AccessToken.DoesNotExist:
             return None
