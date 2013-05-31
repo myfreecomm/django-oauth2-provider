@@ -1,22 +1,20 @@
 """
 Default model implementations. Custom database or OAuth backends need to
-implement these models with fields and and methods to be compatible with the
+implement these models with fields and methods to be compatible with the
 views in :attr:`provider.views`.
 """
+from datetime import datetime as dt
 
-from datetime import datetime
-from django.db import models
 from django.conf import settings
-from .. import constants
-from ..constants import CLIENT_TYPES
-from ..utils import short_token, long_token, get_token_expiry
-from ..utils import get_code_expiry
-from .managers import AccessTokenManager
+from mongoengine import *
+
+from .. import utils
+from ..constants import SCOPES, CLIENT_TYPES
 
 AUTH_USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 
 
-class Client(models.Model):
+class Client(Document):
     """
     Default client implementation.
 
@@ -32,20 +30,19 @@ class Client(models.Model):
 
     Clients are outlined in the :draft:`2` and its subsections.
     """
-    user = models.ForeignKey(AUTH_USER_MODEL, related_name='oauth2_client',
-        blank=True, null=True)
-    name = models.CharField(max_length=255, blank=True)
-    url = models.URLField(help_text="Your application's URL.")
-    redirect_uri = models.URLField(help_text="Your application's callback URL")
-    client_id = models.CharField(max_length=255, default=short_token)
-    client_secret = models.CharField(max_length=255, default=long_token)
-    client_type = models.IntegerField(choices=CLIENT_TYPES)
+    user = ReferenceField(AUTH_USER_MODEL, related_name='oauth2_client', required=False)
+    name = CharField(max_length=255, required=False)
+    url = URLField(help_text="Your application's URL.")
+    redirect_uri = URLField(help_text="Your application's callback URL")
+    client_id = CharField(max_length=255, default=utils.short_token)
+    client_secret = CharField(max_length=255, default=utils.long_token)
+    client_type = IntegerField(choices=CLIENT_TYPES)
 
     def __unicode__(self):
         return self.redirect_uri
 
 
-class Grant(models.Model):
+class Grant(Document):
     """
     Default grant implementation. A grant is a code that can be swapped for an
     access token. Grants have a limited lifetime as defined by
@@ -57,22 +54,22 @@ class Grant(models.Model):
     * :attr:`user`
     * :attr:`client` - :class:`Client`
     * :attr:`code`
-    * :attr:`expires` - :attr:`datetime.datetime`
+    * :attr:`expires` - :attr:`dt.dt`
     * :attr:`redirect_uri`
     * :attr:`scope`
     """
-    user = models.ForeignKey(AUTH_USER_MODEL)
-    client = models.ForeignKey(Client)
-    code = models.CharField(max_length=255, default=long_token)
-    expires = models.DateTimeField(default=get_code_expiry)
-    redirect_uri = models.CharField(max_length=255, blank=True)
-    scope = models.IntegerField(default=0)
+    user = ReferenceField(AUTH_USER_MODEL)
+    client = ReferenceField(Client)
+    code = CharField(max_length=255, default=utils.long_token)
+    expires = DateTimeField(default=utils.get_code_expiry)
+    redirect_uri = CharField(max_length=255, required=False)
+    scope = IntegerField(default=0)
 
     def __unicode__(self):
         return self.code
 
 
-class AccessToken(models.Model):
+class AccessToken(Document):
     """
     Default access token implementation. An access token is a time limited
     token to access a user's resources.
@@ -84,7 +81,7 @@ class AccessToken(models.Model):
     * :attr:`user`
     * :attr:`token`
     * :attr:`client` - :class:`Client`
-    * :attr:`expires` - :attr:`datetime.datetime`
+    * :attr:`expires` - :attr:`dt.dt`
     * :attr:`scope`
 
     Expected methods:
@@ -92,14 +89,12 @@ class AccessToken(models.Model):
     * :meth:`get_expire_delta` - returns an integer representing seconds to
         expiry
     """
-    user = models.ForeignKey(AUTH_USER_MODEL)
-    token = models.CharField(max_length=255, default=long_token)
-    client = models.ForeignKey(Client)
-    expires = models.DateTimeField(default=get_token_expiry)
-    scope = models.IntegerField(default=constants.SCOPES[0][0],
-            choices=constants.SCOPES)
-
-    objects = AccessTokenManager()
+    user = ReferenceField(AUTH_USER_MODEL)
+    token = CharField(max_length=255, default=utils.long_token)
+    client = ReferenceField(Client)
+    expires = DateTimeField(default=utils.get_token_expiry)
+    scope = IntegerField(default=SCOPES[0][0],
+            choices=SCOPES)
 
     def __unicode__(self):
         return self.token
@@ -108,10 +103,16 @@ class AccessToken(models.Model):
         """
         Return the number of seconds until this token expires.
         """
-        return (self.expires - datetime.now()).seconds
+        return (self.expires - dt.now()).seconds
+
+    @classmethod
+    def get_token(cls, token, **kwargs):
+        qs = cls.objects(token=token, expires__gt=dt.now(), **kwargs)
+        token = qs.get()
+        return token
 
 
-class RefreshToken(models.Model):
+class RefreshToken(Document):
     """
     Default refresh token implementation. A refresh token can be swapped for a
     new access token when said token expires.
@@ -124,12 +125,11 @@ class RefreshToken(models.Model):
     * :attr:`client` - :class:`Client`
     * :attr:`expired` - ``boolean``
     """
-    user = models.ForeignKey(AUTH_USER_MODEL)
-    token = models.CharField(max_length=255, default=long_token)
-    access_token = models.OneToOneField(AccessToken,
-            related_name='refresh_token')
-    client = models.ForeignKey(Client)
-    expired = models.BooleanField(default=False)
+    user = ReferenceField(AUTH_USER_MODEL)
+    token = CharField(max_length=255, default=utils.long_token)
+    access_token = ReferenceField(AccessToken)
+    client = ReferenceField(Client)
+    expired = BooleanField(default=False)
 
     def __unicode__(self):
         return self.token
