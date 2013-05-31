@@ -30,7 +30,7 @@ class Client(Document):
 
     Clients are outlined in the :draft:`2` and its subsections.
     """
-    user = ReferenceField(AUTH_USER_MODEL, related_name='oauth2_client', required=False)
+    user = ReferenceField(AUTH_USER_MODEL, required=False)
     name = CharField(max_length=255, required=False)
     url = URLField(help_text="Your application's URL.")
     redirect_uri = URLField(help_text="Your application's callback URL")
